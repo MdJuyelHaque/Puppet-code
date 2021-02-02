@@ -1,0 +1,9 @@
+<%= @tomcatHome %>/logs/catalina.out {
+	copytruncate
+    daily
+    missingok
+    rotate 14
+    compress
+    dateext
+    dateformat -%Y-%m-%d
+}

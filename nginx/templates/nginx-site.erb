@@ -1,0 +1,141 @@
+server {
+
+    listen <%= @port %> <% if @isDefaultServer %>default_server backlog=4096<% end %>;
+    listen [::]:<%= @port %> <% if @isDefaultServer %>default_server ipv6only=on backlog=4096<% end %>;
+
+    # Logging
+    access_log <%= @logsRoot %>/<%= @site %>-http-access.log enhanced buffer=128k flush=30s;
+    error_log <%= @logsRoot %>/<%= @site %>-http-error.log;
+
+    root <%= @defaultDocroot %>;
+    server_name <%= @proxyHost %>;
+
+    index index.html;
+    recursive_error_pages   on;
+
+    # Make site accessible from the proxyHost address
+    proxy_set_header  Host       $host;
+    proxy_set_header  X-Scheme  '<%= @scheme %>';
+    proxy_set_header  X-Real-IP  $remote_addr;
+    proxy_set_header  X-Proxy-Host "<%= @proxyHost %>";
+    proxy_set_header  X-Proxy-Port <%= @httpProxyPort %>;
+    proxy_set_header  X-Original-Request $request_uri;
+    proxy_redirect off;
+    proxy_read_timeout 180s;
+
+    <% if @awsDnsResolution %>
+    # Use AWS DNS server in VPC
+    resolver         10.<%= @vpcClassB %>.0.2 valid=300s;
+    resolver_timeout 10s;
+    <% end %>
+
+    <% @includeFilePaths.each do |includeFilePath| %>
+        include <%= includeFilePath %>;
+    <% end %>
+
+    # Block these paths from access
+    <% @blockPathsRegex.each do |blockPathRegex| %>
+    location ~* <%= blockPathRegex %> {
+        return 404;
+    }
+    <% end %>
+
+    #
+    # Static paths for static content served from filesystem
+    #
+    <% @staticPaths.each do |pathDef| %>
+    location <%= pathDef['sourcePath'] %> {
+        <%- if pathDef['autoindex'] -%>
+        autoindex on;
+        # First attempt to serve request as file, then
+        # as directory, then as index page, then
+        # fall back to displaying a 404.
+        try_files $uri $uri/ <%= pathDef['sourcePath'] %>/index.html =404;
+        <%- else -%>
+        # First attempt to serve request as file, then
+        # as directory, then fall back to displaying a 404.
+        try_files $uri $uri/ =404;
+        <%- end -%>
+        expires 1h;
+        add_header Pragma public;
+        add_header Cache-Control "public, must-revalidate, proxy-revalidate";
+        add_header Strict-Transport-Security "max-age=31536000; includeSubDomains";
+        add_header X-XSS-Protection "1; mode=block";
+        add_header X-Content-Type-Options "nosniff";
+        add_header Content-Security-Policy "frame-ancestors 'none'";
+    }
+    <% end %>
+
+    #
+    # Pass through proxied paths
+    #
+    <% @proxyPaths.each do |proxyPath| %>
+    location <%= proxyPath['sourcePath'] %> {
+        proxy_pass <%= proxyPath['proxyTarget'] %>$request_uri;
+        proxy_cache_bypass 1;
+        proxy_no_cache 1;
+        proxy_intercept_errors off;
+        #expires -1;
+        #add_header Pragma "no-cache";
+    }
+    <% end %>
+
+    <%if @httpsProxyAll %>
+        location / {
+
+            rewrite  / https://<%= @proxyHost %>:<%= @httpsProxyPort %> redirect;
+        }
+    <% else %>
+
+        # Redirect protected paths by absolute path to HTTPS
+        <% @httpsProtectedPaths.each do |path| %>
+        location = <%= path %> {
+            rewrite  ^(.+)$  https://%{server_name}<%= @proxyHost %>:<%= @httpsProxyPort %>$1  redirect;
+        }
+        <% end %>
+
+        # Redirect protected paths through a regex to HTTPS
+        <% @httpsProtectedPathsRegex.each do |path| %>
+        location ~ <%= path %> {
+            rewrite  ^(.+)$  https://%{server_name}<%= @proxyHost %>:<%= @httpsProxyPort %>$1  redirect;
+        }
+        <% end %>
+
+
+        #
+        # Service paths served by the app
+        #
+        <% @appServerPaths.each do |pathDef| %>
+        location <%= pathDef['sourcePath'] %> {
+            <%- if pathDef.has_key?('auth') -%>
+                auth_basic "<%= pathDef['auth']['authChallenge'] %>";
+                auth_basic_user_file <%= pathDef['auth']['passwordFile'] %>;
+            <%- end -%>
+
+            <%- if pathDef.has_key?('redirects') -%>
+                <%- pathDef['redirects'].each do |redirect| -%>
+                rewrite <%= redirect['match'] %> <%= redirect['redirect'] %> <%= redirect['type'] %>;
+                <%- end -%>
+            <%- end -%>
+
+            proxy_pass    http://<%= @appServerHost %>:<%= @appServerHttpsPort %><%= pathDef['destinationPath'] %>$request_uri;
+            proxy_cache_bypass 1;
+            proxy_no_cache 1;
+            proxy_intercept_errors on;
+            #expires -1;
+            #add_header Pragma "no-cache";
+        }
+        <% end %>
+
+    <% end %>
+
+    location = /client-error.html {
+        root <%= @errorPagesDocroot %>;
+    }
+
+    location = /server-error.html {
+        root <%= @errorPagesDocroot %>;
+    }
+
+
+}

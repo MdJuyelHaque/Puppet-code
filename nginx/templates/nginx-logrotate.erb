@@ -1,0 +1,15 @@
+<%= @logsRoot %>/*.log {
+    copytruncate
+    daily
+    missingok
+    rotate 28
+    compress
+    notifempty
+    dateext
+    dateformat -%Y-%m-%d
+    create 0644 www-data www-data
+    sharedscripts
+    postrotate
+        [ ! -f /var/run/nginx.pid ] || kill -USR1 `cat /var/run/nginx.pid`
+    endscript
+}

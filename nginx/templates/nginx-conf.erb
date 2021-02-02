@@ -1,0 +1,79 @@
+user www-data;
+worker_processes <%= @numberOfProcessors %>;
+pid /run/nginx.pid;
+
+events {
+        worker_connections 768;
+        # multi_accept on;
+}
+
+http {
+
+        ##
+        # Basic Settings
+        ##
+
+        # Sendfile
+        sendfile off;
+        tcp_nopush on;
+        tcp_nodelay on;
+
+        # Disable Keep alives
+        keepalive_timeout 0;
+
+        types_hash_max_size 2048;
+
+        <% if @logForwardedClientIp %>
+        # Log proxied IP address behind loadbalancer
+        real_ip_header X-Forwarded-For;
+        set_real_ip_from 0.0.0.0/0;
+        <% end %>
+
+        # Turn off server header
+        server_tokens off;
+        #more_clear_headers Server;
+
+        # server_names_hash_bucket_size 64;
+        # server_name_in_redirect off;
+
+        client_max_body_size <%= @maxPostSize %>;
+        client_body_timeout 120s;
+
+        include /etc/nginx/mime.types;
+        default_type application/octet-stream;
+
+        ##
+        # Logging Settings
+        ##
+
+        access_log <%= @logsRoot %>/access.log;
+        error_log <%= @logsRoot %>/error.log;
+
+        ##
+        # Gzip Settings
+        ##
+
+        gzip on;
+        gzip_disable "msie6";
+
+        gzip_vary on;
+        gzip_min_length 1000;
+        gzip_proxied any;
+        gzip_comp_level 6;
+        gzip_buffers 16 8k;
+        gzip_http_version 1.1;
+        gzip_types text/plain text/css application/json application/x-javascript text/xml application/xml application/xml+rss text/javascript application/javascript;
+
+        proxy_cache_path <%= @cacheRoot %> keys_zone=anonymous:100m inactive=1h;
+        # proxy_ignore_headers Expires Cache-Control Set-Cookie;
+
+        # resolver <%= @nameserver_list %> valid=30s;
+        # resolver_timeout 1s;
+
+        ##
+        # Virtual Host Configs
+        ##
+
+        include /etc/nginx/conf.d/*.conf;
+        include /etc/nginx/sites-enabled/*;
+}
