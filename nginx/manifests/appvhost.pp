@@ -26,7 +26,6 @@ define nginx::appvhost(
 	$awsDnsResolution = false,
   	$vpcClassB = 0,
 ) {
-
   file {"/etc/nginx/sites-enabled/${site}":
       ensure    => 'file',
       mode      => 0444,

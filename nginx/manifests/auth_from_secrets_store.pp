@@ -5,7 +5,6 @@ class nginx::auth_from_secrets_store(
 	$authFileDir,
 	$passwordFile
 ) {
-
 	$authSecretsExecutable = '/var/local/auth-from-secrets.sh'
 
 	file{ $authSecretsExecutable:

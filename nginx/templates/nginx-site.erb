@@ -1,5 +1,4 @@
 server {
-
     listen <%= @port %> <% if @isDefaultServer %>default_server backlog=4096<% end %>;
     listen [::]:<%= @port %> <% if @isDefaultServer %>default_server ipv6only=on backlog=4096<% end %>;
 

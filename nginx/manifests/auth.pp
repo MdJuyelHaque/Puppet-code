@@ -4,7 +4,6 @@ define nginx::auth(
 	$username,
 	$password
 ) {
-
   exec { "add-user-password-to-htaccess-file-${name}":
       path 			=> '/usr/bin:/bin:/sbin:/usr/sbin',
       command     => "htpasswd -b ${authFileDir}/${passwordFile} ${username} ${password}",

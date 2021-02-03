@@ -1,5 +1,4 @@
 #!/bin/sh
-
 AWS_SECRETS_COMMAND=/var/local/aws-get-secret.sh
 AWS_CLI_SECRETS_PROFILE=$1
 AWS_SECRETS_PATH=$2

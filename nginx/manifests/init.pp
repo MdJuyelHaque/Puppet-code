@@ -12,7 +12,6 @@ class nginx (
   $secretsAwsAccessKey = '',
   $secretsAwsSecretKey = '',
 ) {
-
   # SSL configs dir
   $nginxSslDir = "/etc/nginx/ssl"
 

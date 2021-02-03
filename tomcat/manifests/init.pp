@@ -54,7 +54,6 @@ class tomcat(
         cwd				=> $downloadDestination,
         timeout			=> 600,
 	}
-
     exec { 'uncompress-tomcat':
         path        => '/usr/bin:/bin:/sbin:/usr/sbin',
         command     => "unzip -o $downloadDestination/$tomcatBinName -d ${tomcatInstallHome}",

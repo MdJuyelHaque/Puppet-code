@@ -20,7 +20,6 @@ define tomcat::app(
 		} else {
 			$tomcatWebappContextXml = "${tomcatHome}/conf/context.xml"
 		}
-
     	# Tomcat context XML file for the webapp containing the DB details
 		file {"${tomcatWebappContextXml}":
 		  ensure    => 'file',
